@@ -3,13 +3,13 @@
 
 ## Step 1: Initialize a new React Native (TypeScript) project
 
-npx react-native init ChessApp --template react-native-template-typescript
+npx @react-native-community/cli@latest init chessGame
 
-cd ChessApp
+cd ChessGame
 
 ## Step 2: Replace the template’s App.tsx
 
-Open ChessApp/App.tsx in your editor and overwrite it with the provided code
+Open ChessGame/App.tsx in your editor and overwrite it with the provided code
 
 ## Step 3: Android setup
 
