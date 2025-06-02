@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import {
   SafeAreaView,
   View,
@@ -8,6 +8,8 @@ import {
   Modal,
   Button,
 } from 'react-native'
+
+const INITIAL_TIME = 5 * 60
 
 type Color = 'white' | 'black'
 type Coord = [number, number]
@@ -28,7 +30,8 @@ abstract class PieceBase implements Piece {
 class King extends PieceBase {
   symbol = this.color === 'white' ? '♔' : '♚'
   canMove(board: BoardState, [r1, c1], [r2, c2]) {
-    const dr = Math.abs(r2 - r1), dc = Math.abs(c2 - c1)
+    const dr = Math.abs(r2 - r1),
+      dc = Math.abs(c2 - c1)
     return (
       dr <= 1 &&
       dc <= 1 &&
@@ -51,11 +54,14 @@ class Rook extends PieceBase {
   symbol = this.color === 'white' ? '♖' : '♜'
   canMove(board: BoardState, [r1, c1], [r2, c2]) {
     if (r1 !== r2 && c1 !== c2) return false
-    const dr = Math.sign(r2 - r1), dc = Math.sign(c2 - c1)
-    let r = r1 + dr, c = c1 + dc
+    const dr = Math.sign(r2 - r1),
+      dc = Math.sign(c2 - c1)
+    let r = r1 + dr,
+      c = c1 + dc
     while (r !== r2 || c !== c2) {
       if (board[r][c]) return false
-      r += dr; c += dc
+      r += dr
+      c += dc
     }
     return !board[r2][c2] || board[r2][c2]!.color !== this.color
   }
@@ -64,13 +70,17 @@ class Rook extends PieceBase {
 class Bishop extends PieceBase {
   symbol = this.color === 'white' ? '♗' : '♝'
   canMove(board: BoardState, [r1, c1], [r2, c2]) {
-    const dr = r2 - r1, dc = c2 - c1
+    const dr = r2 - r1,
+      dc = c2 - c1
     if (Math.abs(dr) !== Math.abs(dc)) return false
-    const stepR = Math.sign(dr), stepC = Math.sign(dc)
-    let r = r1 + stepR, c = c1 + stepC
+    const stepR = Math.sign(dr),
+      stepC = Math.sign(dc)
+    let r = r1 + stepR,
+      c = c1 + stepC
     while (r !== r2 && c !== c2) {
       if (board[r][c]) return false
-      r += stepR; c += stepC
+      r += stepR
+      c += stepC
     }
     return !board[r2][c2] || board[r2][c2]!.color !== this.color
   }
@@ -79,7 +89,8 @@ class Bishop extends PieceBase {
 class Knight extends PieceBase {
   symbol = this.color === 'white' ? '♘' : '♞'
   canMove(board: BoardState, [r1, c1], [r2, c2]) {
-    const dr = Math.abs(r2 - r1), dc = Math.abs(c2 - c1)
+    const dr = Math.abs(r2 - r1),
+      dc = Math.abs(c2 - c1)
     return (
       ((dr === 2 && dc === 1) || (dr === 1 && dc === 2)) &&
       (!board[r2][c2] || board[r2][c2]!.color !== this.color)
@@ -98,19 +109,25 @@ class Pawn extends PieceBase {
       c1 === c2 &&
       ((this.color === 'white' && r1 === 6) || (this.color === 'black' && r1 === 1)) &&
       r2 === r1 + 2 * dir &&
-      !board[r1 + dir][c1] && !board[r2][c2]
-    ) return true
+      !board[r1 + dir][c1] &&
+      !board[r2][c2]
+    )
+      return true
     // capture diagonal
     if (
-      Math.abs(c2 - c1) === 1 && r2 === r1 + dir &&
+      Math.abs(c2 - c1) === 1 &&
+      r2 === r1 + dir &&
       board[r2][c2]?.color !== this.color
-    ) return true
+    )
+      return true
     return false
   }
 }
 
 const makeBoard = (): BoardState => {
-  const b: BoardState = Array.from({ length: 8 }, () => Array<Piece | null>(8).fill(null))
+  const b: BoardState = Array.from({ length: 8 }, () =>
+    Array<Piece | null>(8).fill(null)
+  )
   for (let c = 0; c < 8; c++) {
     b[1][c] = new Pawn('black')
     b[6][c] = new Pawn('white')
@@ -124,6 +141,12 @@ const makeBoard = (): BoardState => {
 }
 
 export default function App() {
+  // ─── Moved these inside the component ───
+  const [whiteTime, setWhiteTime] = useState<number>(INITIAL_TIME)
+  const [blackTime, setBlackTime] = useState<number>(INITIAL_TIME)
+  // Use `number | null` for RN setInterval
+  const timeRef = useRef<number | null>(null)
+
   const [board, setBoard] = useState<BoardState>(makeBoard())
   const [turn, setTurn] = useState<Color>('white')
   const [selected, setSelected] = useState<Coord | null>(null)
@@ -138,6 +161,8 @@ export default function App() {
     setPromotionCoord(null)
     setGameOver(false)
     setWinner(null)
+    setWhiteTime(INITIAL_TIME)
+    setBlackTime(INITIAL_TIME)
   }
 
   const checkKingAlive = (b: BoardState, color: Color) =>
@@ -183,16 +208,67 @@ export default function App() {
     const nb = board.map(row => row.slice()) as BoardState
     let newPiece: Piece
     switch (type) {
-      case 'Queen': newPiece = new Queen(color); break
-      case 'Rook': newPiece = new Rook(color); break
-      case 'Bishop': newPiece = new Bishop(color); break
-      case 'Knight': newPiece = new Knight(color); break
+      case 'Queen':
+        newPiece = new Queen(color)
+        break
+      case 'Rook':
+        newPiece = new Rook(color)
+        break
+      case 'Bishop':
+        newPiece = new Bishop(color)
+        break
+      case 'Knight':
+        newPiece = new Knight(color)
+        break
     }
     nb[r][c] = newPiece
     setBoard(nb)
     setPromotionCoord(null)
     const opponent: Color = turn === 'white' ? 'black' : 'white'
     setTurn(opponent)
+  }
+
+  useEffect(() => {
+    if (gameOver) {
+      if (timeRef.current !== null) clearInterval(timeRef.current)
+      return
+    }
+
+    if (timeRef.current !== null) clearInterval(timeRef.current)
+
+    timeRef.current = setInterval(() => {
+      if (turn === 'white') {
+        setWhiteTime(prev => {
+          if (prev <= 1) {
+            if (timeRef.current !== null) clearInterval(timeRef.current)
+            setGameOver(true)
+            setWinner('black')
+            return 0
+          }
+          return prev - 1
+        })
+      } else {
+        setBlackTime(prev => {
+          if (prev <= 1) {
+            if (timeRef.current !== null) clearInterval(timeRef.current)
+            setGameOver(true)
+            setWinner('white')
+            return 0
+          }
+          return prev - 1
+        })
+      }
+    }, 1000)
+
+    return () => {
+      if (timeRef.current !== null) clearInterval(timeRef.current)
+    }
+  }, [turn, gameOver]) // ─── Added `gameOver` here ───
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
   }
 
   return (
@@ -219,15 +295,30 @@ export default function App() {
           </View>
         ))}
       </View>
-      {gameOver && <Text style={styles.gameOver}>Game Over: {winner?.toUpperCase()} wins</Text>}
-      <Text style={styles.turn}>{turn.charAt(0).toUpperCase() + turn.slice(1)} to move</Text>
+      {gameOver && (
+        <Text style={styles.gameOver}>
+          Game Over: {winner?.toUpperCase()} wins
+        </Text>
+      )}
+      <View style={{ flexDirection: 'row', marginVertical: 10 }}>
+        <Text style={{ marginRight: 20, fontSize: 16 }}>
+          White: {formatTime(whiteTime)}
+        </Text>
+
+        <Text style={{ fontSize: 16 }}>
+          Black: {formatTime(blackTime)}
+        </Text>
+      </View>
+      <Text style={styles.turn}>
+        {turn.charAt(0).toUpperCase() + turn.slice(1)} to move
+      </Text>
       <Button title="Reset Game" onPress={resetGame} />
 
       <Modal visible={promotionCoord !== null} transparent animationType="slide">
         <View style={styles.modalContainer}>
           <Text style={styles.modalText}>Promote pawn to:</Text>
           <View style={styles.modalButtons}>
-            {['Queen','Rook','Bishop','Knight'].map(t => (
+            {['Queen', 'Rook', 'Bishop', 'Knight'].map(t => (
               <Button key={t} title={t} onPress={() => promote(t as any)} />
             ))}
           </View>
